@@ -27,13 +27,13 @@
               (window-dimensions)))
 
 (defn run-out-of-the-world? []
-  (let [{:keys [left top]} @position
+  (let [{:keys [x y]} @position
         {:keys [height width]} (world-dimensions)]
     (cond
-      (< left 0) :left
-      (< top 0)  :top
-      (> left width) :right
-      (> top height) :bottom
+      (< x 0) :left
+      (< y 0)  :top
+      (> x width) :right
+      (> y height) :bottom
       :else false)))
 
 (defn reset-to-the-center! []
