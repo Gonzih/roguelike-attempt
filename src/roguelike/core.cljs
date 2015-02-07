@@ -5,10 +5,11 @@
 
 (enable-console-print!)
 
+(defonce enemies (atom [{:x 0 :y 0}]))
 (defonce stages       (atom {}))
 (defonce stage-coords (atom {:x 0 :y 0}))
-(defonce position     (atom {:left 0
-                             :top 0}))
+(defonce position     (atom {:x 0
+                             :y 0}))
 
 (def unit-size 8)
 
@@ -36,18 +37,17 @@
       :else false)))
 
 (defn reset-to-the-center! []
-  (let [{:keys [left top]} @position
-        {:keys [height width]} (world-dimensions)]
-    (reset! position {:top  (js/Math.floor (/ height 2))
-                      :left (js/Math.floor (/ width 2))})))
+  (let [{:keys [height width]} (world-dimensions)]
+    (reset! position {:y (js/Math.floor (/ height 2))
+                      :x (js/Math.floor (/ width 2))})))
 
 (defn jump-to-next-stage! [direction]
   (let [{:keys [height width]} (world-dimensions)
         pos (case direction
-              :left {:left (dec width)}
-              :top {:top (dec height)}
-              :right {:left 0}
-              :bottom {:top 0})
+              :left {:x (dec width)}
+              :top {:y (dec height)}
+              :right {:x 0}
+              :bottom {:y 0})
         stage-pos (case direction
               :left   (update @stage-coords :y dec)
               :top    (update @stage-coords :x dec)
@@ -57,13 +57,11 @@
     (reset! stage-coords stage-pos)))
 
 (defn key-down [e]
-  (let [x :left
-        y :top
-        [field value] (case (.-keyCode e)
-                        37 [x -1] ;left
-                        40 [y 1]  ;down
-                        38 [y -1] ;up
-                        39 [x 1]  ;right
+  (let [[field value] (case (.-keyCode e)
+                        37 [:x -1] ;left
+                        40 [:y 1]  ;down
+                        38 [:y -1] ;up
+                        39 [:x 1]  ;right
                         [])]
     (when (and field value)
       (swap! position update field (partial + value))
@@ -78,21 +76,49 @@
 (defonce key-bind
   (bind-events))
 
-(defn world-tick! [])
+(defn move-enemy [{player-x :x player-y :y :as player}
+                  {enemy-x :x enemy-y :y :as enemy}]
+  (let [x-diff (- player-x enemy-x)
+        y-diff (- player-y enemy-y)]
+    (if (> (js/Math.abs x-diff)
+           (js/Math.abs y-diff))
+      (update enemy :x (if (pos? x-diff) inc dec))
+      (update enemy :y (if (pos? y-diff) inc dec)))))
 
-(defn root []
-  (let [{:keys [left top]} @position]
-    (prn @position)
-    (prn @stage-coords)
-    [:div
+(defn world-tick! []
+  (swap! enemies (partial map (partial move-enemy @position)))
+  (prn :enemies @enemies))
+
+(defn enemy-component [i {:keys [x y]}]
+  ^{:key (str "enemy" i)}
+  [:div
+   {:style {:position :absolute
+            :top (* y unit-size)
+            :left (* x unit-size)
+            :height unit-size
+            :width unit-size
+            :border "1px solid red"
+            :overflow :hidden
+            :background-color :red}}])
+
+(defn player-component []
+  (let [{:keys [x y]} @position]
+    [:div#player
      {:style {:position :absolute
-              :top (* top unit-size)
-              :left (* left unit-size)
+              :top (* y unit-size)
+              :left (* x unit-size)
               :height unit-size
               :width unit-size
               :border "1px solid black"
               :overflow :hidden
               :background-color :black}}]))
+
+(defn root []
+  ; (prn :position @position)
+  ; (prn :stage-coords @stage-coords)
+  [:div
+   (map-indexed enemy-component @enemies)
+   [player-component]])
 
 (defn -main []
   (reset-to-the-center!)
