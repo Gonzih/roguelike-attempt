@@ -5,7 +5,7 @@
 
 (enable-console-print!)
 
-(defonce enemies (atom [{:x 0 :y 0}]))
+(defonce enemies      (atom []))
 (defonce stages       (atom {}))
 (defonce stage-coords (atom {:x 0 :y 0}))
 (defonce position     (atom {:x 0
@@ -25,6 +25,11 @@
 (defn world-dimensions []
   (map-values #(js/Math.floor (/ % unit-size))
               (window-dimensions)))
+
+(defn generate-random-enemy []
+  (let [{:keys [height width]} (window-dimensions)]
+    {:x (rand-int (js/Math.floor (/ width  unit-size)))
+     :y (rand-int (js/Math.floor (/ height unit-size)))}))
 
 (defn run-out-of-the-world? []
   (let [{:keys [x y]} @position
@@ -67,7 +72,9 @@
       (swap! position update field (partial + value))
       (world-tick!))
     (if-let [direction (run-out-of-the-world?)]
-      (jump-to-next-stage! direction))))
+      (jump-to-next-stage! direction)
+      ; (reset! enemies [(generate-random-enemy)])
+      )))
 
 (defn bind-events []
   (set! (.-onkeydown js/document)
@@ -122,6 +129,7 @@
 
 (defn -main []
   (reset-to-the-center!)
+  (reset! enemies (repeatedly (rand-int 15) generate-random-enemy))
   (reagent/render-component [root] (.-body js/document)))
 
 (-main)
